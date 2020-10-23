@@ -40,6 +40,7 @@ def subdomain(domain):
         os.system("python ~/tools/Sublist3r/sublist3r.py -d {} -t 15 -v -o ~/recon/{}/sublist3r.txt".format(domain,domain))
 
         os.system("curl -s https://certspotter.com/api/v0/certs?domain={} 2>/dev/null | jq '.[].dns_names[]' | sed 's/\"//g' | sed 's/\*\.//g' | sort -u | grep -i {} > ~/recon/{}/certspotter.txt".format(domain,domain,domain))
+        os.system("curl -ss https://dns.bufferover.run/dns?q={} | jq '.FDNS_A[]' | sed 's/^\".*.,//g' | sed 's/\"$//g' | sort -u | grep -i {} > ~/recon/{}/bufferover.txt".format(domain,domain,domain))
         os.system("amass enum --passive -d {} -o ~/recon/{}/amass-{}.txt".format(domain,domain,domain))
         os.system("findomain -t {} -u ~/recon/{}/findomain-{}.txt".format(domain,domain,domain))
         os.system("assetfinder --subs-only {} | tee -a ~/recon/{}/asseet-{}.txt".format(domain,domain,domain))
@@ -67,9 +68,9 @@ def takeover(domain):
 def screenshots(domain):
         print("[*] screenshots running")
         os.system("mkdir ~/recon/"+domain+"/screenshots/ 2>/dev/null ; rm -rf ~/recon/"+domain+"/screenshots/* 2>/dev/null")
-        os.system("cd ~/tools/ ; ./gowitness file -f ~/recon/{}/uphost/uphost.txt -t 50 -P ~/recon/{}/screenshots/".format(domain,domain))
-        os.system("cd ~/recon/"+domain+"/screenshots/ ; zip -r screenshots.zip * ")
-        os.system("cd ~/recon/"+domain+"/screenshots/ ; curl -F file=@screenshots.zip -F \"initial_comment=screenshots for "+domain+" done !!!\" -F channels=screenshots -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
+        os.system("cd  ~/recon/"+domain+"/screenshots/ ; cat ~/recon/"+domain+"/uphost/uphost.txt | aquatone -threads 4 -ports large -chrome-path $(which chromium-browser)")
+       # os.system("cd ~/recon/"+domain+"/screenshots/ ; zip -r screenshots.zip * ")
+        #os.system("cd ~/recon/"+domain+"/screenshots/ ; curl -F file=@screenshots.zip -F \"initial_comment=screenshots for "+domain+" done !!!\" -F channels=screenshots -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
 
 
 def recon(domain):
@@ -91,7 +92,7 @@ def directories(domain):
         # num_lines = sum(1 for line in open("~/recon/{}/uphost/uphost_tmp.txt".format(domain)))
         print(num_lines)
         for i in range(num_lines):
-                os.system("cd ~/recon/"+domain+"/directories/ ; ~/tools/dirsearch/dirsearch.py -u https://"+lines[i]+" -e * -x 400,403,406,409,410,412,415,418,423,426,431,450,429,500,503,506,509,598 -t 50 -b --simple-report="+lines[i]+".txt")
+                os.system("cd ~/recon/"+domain+"/directories/ ; python3 ~/tools/dirsearch/dirsearch.py -u https://"+lines[i]+" -e * -x 400,403,406,409,410,412,415,418,423,426,431,450,429,500,503,506,509,598 -t 100 -b --simple-report="+lines[i]+".txt")
                 os.system("cd ~/recon/"+domain+"/directories/ ; curl -F file=@"+lines[i]+".txt -F \"initial_comment=Dirsearch result for domain "+lines[i]+" !!!\" -F channels=directories -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
 
 
@@ -99,14 +100,14 @@ def directories(domain):
 def uphost(domain):
         print("[*] uphost Running")
         os.system("cat ~/recon/"+domain+"/merge/unique.txt | filter-resolved > ~/recon/"+domain+"/uphost/uphost_tmp.txt")
-        os.system("cat ~/recon/"+domain+"/uphost/uphost_tmp.txt | httpx -threads 50 > ~/recon/"+domain+"/uphost/uphost.txt")
+        os.system("cat ~/recon/"+domain+"/uphost/uphost_tmp.txt | httpx -threads 200 -silent > ~/recon/"+domain+"/uphost/uphost.txt")
         os.system("cd ~/recon/"+domain+"/uphost ; curl -F file=@uphost.txt -F \"initial_comment=New **Up** Subdomains Discovered !!!\" -F channels=uphost -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
 
 def gau(domain):
         print("[*] gau Running")
         os.system("mkdir ~/recon/{}/gau/".format(domain))
         os.system("cat ~/recon/{}/uphost/uphost_tmp.txt | gau >> ~/recon/{}/gau/gau.txt".format(domain,domain))
-        os.system("cd ~/recon/"+domain+"/gau ; curl -F file=@gau.txt -F \"initial_comment=Wayback URLs\" -F channels=gau -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
+        #os.system("cd ~/recon/"+domain+"/gau ; curl -F file=@gau.txt -F \"initial_comment=Wayback URLs\" -F channels=gau -H \"Authorization: Bearer "+slack_token+"\" https://slack.com/api/files.upload 2>/dev/null 1>/dev/null")
 
 def nuclei(domain):
         print("[*] Nuclei Running")
@@ -126,7 +127,7 @@ def nuclei(domain):
 
 
 #       #print ("domain")
-logo()
+#logo()
 subdomain(domain)
 uphost(domain)
 takeover(domain)
